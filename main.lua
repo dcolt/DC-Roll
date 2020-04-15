@@ -5,7 +5,7 @@ local trackRolls = false
 local rolls = {}
 
 local function setup()
-	if not DCSession then DCSession = {} end
+	DCSession = _G["DCSession"] or {}
 end
 
 local function receivedLoot(playerName)
@@ -87,14 +87,24 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					return
 				end
 
-				local player, loot = string.match(msg, "^add ([^ ]+) (.+)")
-				table.(DCSession[#DCSession]["looters"],{["player"] = player, ["loot"] = loot})
+				local player, loot = string.match(msg, "^del ([^ ]+) (.+)")
+				local index = 0;
+				for i = 1, #DCSession[#DCSession]["looters"] do
+					if DCSession[#DCSession]["looters"][i]["player"] == player and DCSession[#DCSession]["looters"][i]["loot"] == loot then
+						index = i
+						break
+					end
+				end
+
+				if index > 0 then
+					table.remove(DCSession[#DCSession]["looters"],index)
+				end
 			elseif msg_split[1] == "roll" then
 				local loot = string.match(msg, "^roll (.+)")
 				print(loot)
 				SendChatMessage("Roll ".. loot, "RAID_WARNING")
 				trackRolls = true;
-				rolls = {["Dummy"] = 50}
+				rolls = {}
 			elseif msg_split[1] == "endroll" then
 				trackRolls = false;
 				SendChatMessage("Rolls are now closed", "RAID");
@@ -122,9 +132,6 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 			if rolls[name] == nil then
 				rolls[name] = roll - (receivedLoot(name)*100)
 			end
-			print(name)
-			print(roll)
-			print(range)
 		end
 	end
 end)
