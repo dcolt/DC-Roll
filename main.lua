@@ -79,15 +79,17 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					return
 				end
 
-				local player, loot = string.match(msg, "^add ([^ ]+) (.+)")
-				table.insert(DCSession[#DCSession]["looters"],{["player"] = player, ["loot"] = loot})
+				local loot = string.match(msg, "^add (.+)")
+				local player = UnitName("target")
+				table.insert(DCSession[#DCSession]["looters"], {["player"] = player, ["loot"] = loot})
 			elseif msg_split[1] == "del" then
 				if not activeSession then
 					DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ No active session ~")
 					return
 				end
 
-				local player, loot = string.match(msg, "^del ([^ ]+) (.+)")
+				local player = UnitName("target")
+				local loot = string.match(msg, "^del (.+)")
 				local index = 0;
 				for i = 1, #DCSession[#DCSession]["looters"] do
 					if DCSession[#DCSession]["looters"][i]["player"] == player and DCSession[#DCSession]["looters"][i]["loot"] == loot then
