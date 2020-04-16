@@ -57,7 +57,6 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 
 		SlashCmdList.BIG = function (msg)
 			local msg_split = {}
-			print(msg)
 			for v in string.gmatch(msg, "[^ ]+") do
 				table.insert(msg_split, v)
 			end
@@ -103,7 +102,6 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				end
 			elseif msg_split[1] == "roll" then
 				local loot = string.match(msg, "^roll (.+)")
-				print(loot)
 				SendChatMessage("Roll ".. loot, "RAID_WARNING")
 				trackRolls = true;
 				rolls = {}
@@ -115,22 +113,11 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				for p,r in spairs(rolls, function(t,a,b) return t[a] > t[b] end) do
 					DEFAULT_CHAT_FRAME:AddMessage(p.." : "..r)
 				end
-			else
-				for key,t in pairs(DCSession) do
-					print(key)
-					print(t["name"])
-					for i = 1, #t["looters"] do
-						for k,v in pairs(t["looters"][i]) do
-							print (k,v)
-						end
-					end
-				end
 			end
 		end
 	elseif event == "CHAT_MSG_SYSTEM" then
 		local name, roll, range = string.match(arg1, "^([^ ]+) rolls (%d+) %((%d+-%d+)%)$")
-		print(arg1)
-		if roll ~= nil and trackRolls then
+		if roll ~= nil and trackRolls and range == "1-100" then
 			if rolls[name] == nil then
 				rolls[name] = roll - (receivedLoot(name)*100)
 			end
