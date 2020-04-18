@@ -17,9 +17,9 @@ local function createDumpBox()
 	CopyFrameButton:SetPoint("BOTTOM", CopyFrame, "BOTTOM", 0, 10)
 
 	local CopyFrameScroll = CreateFrame("ScrollFrame", "CopyFrameScroll", CopyFrame, "UIPanelScrollFrameTemplate")
-	CopyFrameScroll:SetPoint("TOP", 5, -30)
+	CopyFrameScroll:SetPoint("TOP", CopyFrame, "TOP", 5, -30)
 	CopyFrameScroll:SetPoint("BOTTOM", CopyFrameButton, "BOTTOM", 10, 30)
-	CopyFrameScroll:SetPoint("RIGHT", -40)
+	CopyFrameScroll:SetPoint("RIGHT", CopyFrame, "RIGHT", -40, 0)
 
 	local CopyFrameScrollText = CreateFrame("EditBox", "CopyFrameScrollText", CopyFrameScroll)
 	CopyFrameScrollText:SetMaxLetters(99999)
@@ -178,7 +178,17 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					DEFAULT_CHAT_FRAME:AddMessage(p.." : "..r)
 				end
 			elseif msg_split[1] == "export" then
-				DumpSession(#DCSession)
+				local index = #DCSession
+				if (#msg_split > 1) then
+					local nr = tonumber(msg_split[2])
+					if (nr < #DCSession and nr > 0) then
+						index = nr
+					elseif (nr < 0 and index + nr > 0) then
+						index = index + nr
+					end
+				end
+				
+				DumpSession(index)
 			end
 		end
 	elseif event == "CHAT_MSG_SYSTEM" then
