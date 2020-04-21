@@ -47,7 +47,96 @@ local function createDumpBox()
 	return CopyFrame
 end
 
+local function parseCSV(csvData)
+	for row in string.gmatch(csvData, "[^\n]+") do
+		local columnNr = 0
+
+		local loot = ""
+		local prios = {}
+		local isGroup = false
+		local group = ""
+
+		for column in string.gmatch(row, "[^,]+") do
+			if column:sub(1,1) == "\"" then
+				isGroup = true
+			end
+
+			if isGroup then
+				group = group .. "," .. column
+				
+				if column:sub(#column, #column) == "\"" then
+					isGroup = false
+					column = group
+				end
+			end
+
+			if not isGroup then
+				columnNr = columnNr + 1
+				if columnNr == 1 then
+					loot = column
+				elseif columnNr > 3 and prios[#prios] ~= column then
+					table.insert(prios, column)
+				end
+			end
+		end
+
+		if loot ~= "Loot Name" and #prios > 0 then
+			DCSession[#DCSession]["reserves"][loot] = prios
+		end
+	end
+	print("Reserverd import done!")
+end
+
+local function createImportBox()
+	local ImportFrame = CreateFrame("Frame", "ImportFrame", UIParent)
+	ImportFrame:SetMovable(true)
+
+	ImportFrame:SetSize(700, 450)
+	ImportFrame:SetPoint("CENTER")
+	ImportFrame:SetBackdrop({bgFile = "Interface/DialogFrame/UI-DialogBox-Background", 
+		edgeFile = "Interface/Tooltips/UI-Tooltip-Border", 
+		tile = true, tileSize = 16, edgeSize = 16, 
+		insets = { left = 5, right = 5, top = 5, bottom = 5 },
+		backdropColor = { r=0, g=0, b=0, a=1 }})
+
+	local ImportFrameButton = CreateFrame("Button", "ImportFrameButton", ImportFrame, "GameMenuButtonTemplate")
+	ImportFrameButton:SetText("Okay")
+	ImportFrameButton:SetPoint("BOTTOM", ImportFrame, "BOTTOM", 0, 10)
+
+	local ImportFrameScroll = CreateFrame("ScrollFrame", "ImportFrameScroll", ImportFrame, "UIPanelScrollFrameTemplate")
+	ImportFrameScroll:SetPoint("TOP", ImportFrame, "TOP", 5, -30)
+	ImportFrameScroll:SetPoint("BOTTOM", ImportFrameButton, "BOTTOM", 10, 30)
+	ImportFrameScroll:SetPoint("RIGHT", ImportFrame, "RIGHT", -40, 0)
+
+	local ImportFrameScrollText = CreateFrame("EditBox", "ImportFrameScrollText", ImportFrameScroll)
+	ImportFrameScrollText:SetMaxLetters(99999)
+	ImportFrameScrollText:SetMultiLine(true)
+	ImportFrameScrollText:SetAutoFocus(true)
+	ImportFrameScrollText:SetSize(630, 380)
+	ImportFrameScrollText:SetFontObject(ChatFontNormal)
+
+	ImportFrameScroll:SetScrollChild(ImportFrameScrollText)
+
+	
+	ImportFrame.Button = ImportFrameButton
+	ImportFrame.Scroll = ImportFrameScroll
+	ImportFrame.ScrollText = ImportFrameScrollText
+
+	ImportFrameScrollText:SetScript("OnEscapePressed", function(self)
+		ImportFrame:Hide()
+	end)
+	ImportFrameButton:SetScript("OnClick", function(self)
+		parseCSV(ImportFrameScrollText:GetText())
+		ImportFrame:Hide()
+	end)
+
+	ImportFrame:Hide()
+
+	return ImportFrame
+end
+
 local CopyFrame = createDumpBox()
+local ImportFrame = createImportBox()
 
 local activeSession = false
 local trackRolls = false
@@ -96,8 +185,22 @@ local function spairs(t, order)
     end
 end
 
+local function getPrios(lootName)
+	if DCSession[#DCSession]["reserves"][lootName] == nil then
+		return ""
+	end
+
+	local names = DCSession[#DCSession]["reserves"][lootName][1]
+
+	for i = 2, #DCSession[#DCSession]["reserves"][lootName] do
+		names = strjoin(" ", names, DCSession[#DCSession]["reserves"][lootName][i])
+	end
+
+	return names
+end
+
 local function DumpSession(index)
-	local dumpString = "Name;"..DCSession[index]["name"].."\n"
+	local dumpString = "Name;"..DCSession[index]["name"]..";"..(DCSession[index]["date"] or "").."\n"
 	dumpString = dumpString.."Looter;Loot\n"
 
 	for i = 1, #DCSession[index]["looters"] do
@@ -128,11 +231,15 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					return
 				end
 
-				local session = {["name"] = msg_split[2], ["looters"] = {}}
+				local session = {["name"] = msg_split[2], ["looters"] = {}, ["date"] = date("%d/%m/%Y"), ["reserves"] = {}}
 
 				table.insert(DCSession,session)
 				activeSession = true
+				print("Session "..session["name"].." started")
 			elseif msg_split[1] == "endsession" then
+				if (activeSession) then
+					print("Session "..DCSession[#DCSession]["name"].." ended")
+				end
 				activeSession = false
 			elseif msg_split[1] == "add" then
 				if not activeSession then
@@ -166,7 +273,17 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				end
 			elseif msg_split[1] == "roll" then
 				local loot = string.match(msg, "^roll (.+)")
+				local lootName = string.match(loot, "%[(.+)%]")
+
+				if activeSession then
+					local namesString = getPrios(lootName)
+
+					if strlen(namesString) > 0 then
+						loot = strjoin(" ", loot, namesString)
+					end
+				end
 				SendChatMessage("Roll ".. loot, "RAID_WARNING")
+				print("Roll started for "..loot)
 				trackRolls = true;
 				rolls = {}
 			elseif msg_split[1] == "endroll" then
@@ -189,6 +306,9 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				end
 				
 				DumpSession(index)
+			elseif msg_split[1] == "import" then
+				ImportFrame.ScrollText:SetText("")
+				ImportFrame:Show()
 			end
 		end
 	elseif event == "CHAT_MSG_SYSTEM" then
@@ -200,4 +320,3 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 		end
 	end
 end)
-
