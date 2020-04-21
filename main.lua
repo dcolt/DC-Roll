@@ -117,6 +117,18 @@ local function addLoot(player, loot)
 	print("Added "..loot.." to "..player)
 end
 
+StaticPopupDialogs["BIG_ADD_LOOT"] = {
+	text = "Is %s +1?",
+	button1 = "Yes",
+	button2 = "No",
+	OnAccept = function(_, player, item)
+		addLoot(player, item)
+	end,
+	timeout = 0,
+	whileDead = true,
+	preferredIndex = 3,
+}
+
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CHAT_MSG_SYSTEM")
 f:RegisterEvent("CHAT_MSG_LOOT")
@@ -207,22 +219,15 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				rolls[name] = roll - (receivedLoot(name)*100)
 			end
 		end
-	elseif event == "CHAT_MSG_LOOT" then
+	elseif event == "CHAT_MSG_LOOT" and activeSession then
 		local player = select(4,...)
 		local item = string.match(arg1, "loot: (.+[^.])")
-		if (item == currentlyRolledLoot) then
-			StaticPopupDialogs["BIG_ADD_LOOT"] = {
-				  text = "Is %s +1?",
-				  button1 = "Yes",
-				  button2 = "No",
-				  OnAccept = function()
-					  addLoot(player, item)
-				  end,
-				  timeout = 0,
-				  whileDead = true,
-				  preferredIndex = 3,
-			}
-			StaticPopup_Show("BIG_ADD_LOOT", item);
+		if item == currentlyRolledLoot then
+			local dialog = StaticPopup_Show("BIG_ADD_LOOT", item);
+			if dialog then
+				dialog.data = player
+				dialog.data2 = item
+			end
 		end
 		
 	end
