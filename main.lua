@@ -141,6 +141,7 @@ local ImportFrame = createImportBox()
 local activeSession = false
 local trackRolls = false
 local rolls = {}
+local currentlyRolledLoot = ""
 
 local function setup()
 	DCSession = _G["DCSession"] or {}
@@ -212,8 +213,28 @@ local function DumpSession(index)
 	CopyFrame:Show()
 end
 
+
+local function addLoot(player, loot)
+
+	table.insert(DCSession[#DCSession]["looters"], {["player"] = player, ["loot"] = loot})
+	print("Added "..loot.." to "..player)
+end
+
+StaticPopupDialogs["BIG_ADD_LOOT"] = {
+	text = "Is %s +1?",
+	button1 = "Yes",
+	button2 = "No",
+	OnAccept = function(_, player, item)
+		addLoot(player, item)
+	end,
+	timeout = 0,
+	whileDead = true,
+	preferredIndex = 3,
+}
+
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CHAT_MSG_SYSTEM")
+f:RegisterEvent("CHAT_MSG_LOOT")
 f:SetScript("OnEvent", function (self, event, arg1, ...)
 	if event == "ADDON_LOADED" and arg1 == "DC-Roll" then
 		SLASH_BIG1 = '/big'
@@ -247,10 +268,10 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					return
 				end
 
-				local loot = string.match(msg, "^add +(.+|r)")
 				local player = UnitName("target")
-				table.insert(DCSession[#DCSession]["looters"], {["player"] = player, ["loot"] = loot})
-				print("Added "..loot.." to "..player)
+				local loot = string.match(msg, "^add +(.+|r)")
+				addLoot(player, loot);
+				
 			elseif msg_split[1] == "del" then
 				if not activeSession then
 					DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ No active session ~")
@@ -274,6 +295,8 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 			elseif msg_split[1] == "roll" then
 				local loot = string.match(msg, "^roll (.+)")
 				local lootName = string.match(loot, "%[(.+)%]")
+
+				currentlyRolledLoot = loot
 
 				if activeSession then
 					local namesString = getPrios(lootName)
@@ -318,5 +341,16 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				rolls[name] = roll - (receivedLoot(name)*100)
 			end
 		end
+	elseif event == "CHAT_MSG_LOOT" and activeSession then
+		local player = select(4,...)
+		local item = string.match(arg1, "loot: (.+[^.])")
+		if item == currentlyRolledLoot then
+			local dialog = StaticPopup_Show("BIG_ADD_LOOT", item);
+			if dialog then
+				dialog.data = player
+				dialog.data2 = item
+			end
+		end
+		
 	end
 end)
