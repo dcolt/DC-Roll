@@ -188,16 +188,21 @@ end
 
 local function getPrios(lootName)
 	if DCSession[#DCSession]["reserves"][lootName] == nil then
-		return ""
+		return nil
 	end
 
-	local names = DCSession[#DCSession]["reserves"][lootName][1]
+	local namesString = DCSession[#DCSession]["reserves"][lootName][1]
 
 	for i = 2, #DCSession[#DCSession]["reserves"][lootName] do
-		names = strjoin(" ", names, DCSession[#DCSession]["reserves"][lootName][i])
+		namesString = strjoin(" ", namesString, DCSession[#DCSession]["reserves"][lootName][i])
 	end
 
-	return names
+	nameCount = #(DCSession[#DCSession]["reserves"][lootName])
+	prioInfo = {}
+	prioInfo["namesString"] = namesString
+	prioInfo["nameCount"] = nameCount
+	
+	return prioInfo
 end
 
 local function DumpSession(index)
@@ -298,14 +303,19 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 
 				currentlyRolledLoot = loot
 
+				local announceString = "Roll " .. loot
 				if activeSession then
-					local namesString = getPrios(lootName)
-
-					if strlen(namesString) > 0 then
-						loot = strjoin(" ", loot, namesString)
+					local lootPrios = getPrios(lootName)
+					
+					if (lootPrios) then
+						if(lootPrios["nameCount"] > 1) then
+							announceString = strjoin(" ", announceString, lootPrios["namesString"])
+						else
+							announceString = "GZ " .. currentlyRolledLoot .. " " .. lootPrios["namesString"] .. " softres"
+						end
 					end
 				end
-				SendChatMessage("Roll ".. loot, "RAID_WARNING")
+				SendChatMessage(announceString, "RAID_WARNING")
 				print("Roll started for "..loot)
 				trackRolls = true;
 				rolls = {}
