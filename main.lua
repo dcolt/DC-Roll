@@ -308,7 +308,6 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					local lootPrios = getPrios(lootName)
 					
 					if (lootPrios) then
-						print(lootPrios)
 						if(lootPrios["nameCount"] > 1) then
 							announceString = strjoin(" ", announceString, lootPrios["namesString"])
 						else
