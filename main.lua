@@ -84,7 +84,7 @@ local function parseCSV(csvData)
 			DCSession[#DCSession]["reserves"][loot] = prios
 		end
 	end
-	print("Reserverd import done!")
+	print("Reserved import done!")
 end
 
 local function createImportBox()
