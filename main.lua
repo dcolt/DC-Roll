@@ -308,6 +308,7 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 					local lootPrios = getPrios(lootName)
 					
 					if (lootPrios) then
+						print(lootPrios)
 						if(lootPrios["nameCount"] > 1) then
 							announceString = strjoin(" ", announceString, lootPrios["namesString"])
 						else
@@ -354,7 +355,10 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 	elseif event == "CHAT_MSG_LOOT" and activeSession then
 		local player = select(4,...)
 		local item = string.match(arg1, "loot: (.+[^.])")
-		if item == currentlyRolledLoot then
+		local itemName = string.match(item, "%[(.+)%]")
+		
+		if item == currentlyRolledLoot and getPrios(itemName) == nil then
+
 			local dialog = StaticPopup_Show("BIG_ADD_LOOT", item);
 			if dialog then
 				dialog.data = player
