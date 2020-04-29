@@ -1,6 +1,8 @@
+DC_Roll = {}
+
 local f = CreateFrame("Frame")
 
-local function createDumpBox()
+function DC_Roll:createDumpBox()
 	local CopyFrame = CreateFrame("Frame", "CopyFrame", UIParent)
 	CopyFrame:SetMovable(true)
 
@@ -47,7 +49,7 @@ local function createDumpBox()
 	return CopyFrame
 end
 
-local function parseCSV(csvData)
+function DC_Roll:parseCSV(csvData)
 	for row in string.gmatch(csvData, "[^\n]+") do
 		local columnNr = 0
 
@@ -66,7 +68,7 @@ local function parseCSV(csvData)
 				
 				if column:sub(#column, #column) == "\"" then
 					isGroup = false
-					column = group
+					column = strtrim(group, "\" ")
 				end
 			end
 
@@ -87,7 +89,7 @@ local function parseCSV(csvData)
 	print("Reserved import done!")
 end
 
-local function createImportBox()
+function DC_Roll:createImportBox()
 	local ImportFrame = CreateFrame("Frame", "ImportFrame", UIParent)
 	ImportFrame:SetMovable(true)
 
@@ -126,7 +128,7 @@ local function createImportBox()
 		ImportFrame:Hide()
 	end)
 	ImportFrameButton:SetScript("OnClick", function(self)
-		parseCSV(ImportFrameScrollText:GetText())
+		DC_Roll:parseCSV(ImportFrameScrollText:GetText())
 		ImportFrame:Hide()
 	end)
 
@@ -135,20 +137,20 @@ local function createImportBox()
 	return ImportFrame
 end
 
-local CopyFrame = createDumpBox()
-local ImportFrame = createImportBox()
+local CopyFrame = DC_Roll:createDumpBox()
+local ImportFrame = DC_Roll:createImportBox()
 
-local activeSession = false
-local trackRolls = false
-local rolls = {}
-local currentlyRolledLoot = ""
+DC_Roll.trackRolls = false
+DC_Roll.rolls = {}
+DC_Roll.currentlyRolledLoot = ""
 
-local function setup()
+function DC_Roll:setup()
 	DCSession = _G["DCSession"] or {}
+	DCSession.active = DCSession.active or false
 end
 
-local function receivedLoot(playerName)
-	if not activeSession then
+function DC_Roll:receivedLoot(playerName)
+	if not DCSession.active then
 		return 0
 	end
 
@@ -186,7 +188,7 @@ local function spairs(t, order)
     end
 end
 
-local function getPrios(lootName)
+function DC_Roll:getPrios(lootName)
 	if DCSession[#DCSession]["reserves"][lootName] == nil then
 		return nil
 	end
@@ -205,7 +207,7 @@ local function getPrios(lootName)
 	return prioInfo
 end
 
-local function DumpSession(index)
+function DC_Roll:DumpSession(index)
 	local dumpString = "Name;"..DCSession[index]["name"]..";"..(DCSession[index]["date"] or "").."\n"
 	dumpString = dumpString.."Looter;Loot\n"
 
@@ -219,8 +221,7 @@ local function DumpSession(index)
 end
 
 
-local function addLoot(player, loot)
-
+function DC_Roll:addLoot(player, loot)
 	table.insert(DCSession[#DCSession]["looters"], {["player"] = player, ["loot"] = loot})
 	print("Added "..loot.." to "..player)
 end
@@ -230,8 +231,22 @@ StaticPopupDialogs["BIG_ADD_LOOT"] = {
 	button1 = "Yes",
 	button2 = "No",
 	OnAccept = function(_, player, item)
-		addLoot(player, item)
+		DC_Roll:addLoot(player, item)
 	end,
+	timeout = 0,
+	whileDead = true,
+	preferredIndex = 3,
+}
+
+StaticPopupDialogs["BIG_ACTIVE_SESSION"] = {
+	text = "You have an active session",
+	button1 = "Continue",
+	button2 = "Stop",
+	OnAccept = function()
+	end,
+	OnCancel = function()
+		DCSession.active = false
+	end
 	timeout = 0,
 	whileDead = true,
 	preferredIndex = 3,
@@ -240,11 +255,12 @@ StaticPopupDialogs["BIG_ADD_LOOT"] = {
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CHAT_MSG_SYSTEM")
 f:RegisterEvent("CHAT_MSG_LOOT")
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:SetScript("OnEvent", function (self, event, arg1, ...)
 	if event == "ADDON_LOADED" and arg1 == "DC-Roll" then
 		SLASH_BIG1 = '/big'
 
-		setup()
+		DC_Roll:setup()
 
 		SlashCmdList.BIG = function (msg)
 			local msg_split = {}
@@ -260,25 +276,25 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				local session = {["name"] = msg_split[2], ["looters"] = {}, ["date"] = date("%d/%m/%Y"), ["reserves"] = {}}
 
 				table.insert(DCSession,session)
-				activeSession = true
+				DCSession.active = true
 				print("Session "..session["name"].." started")
 			elseif msg_split[1] == "endsession" then
-				if (activeSession) then
+				if DCSession.active then
 					print("Session "..DCSession[#DCSession]["name"].." ended")
 				end
-				activeSession = false
+				DCSession.active = false
 			elseif msg_split[1] == "add" then
-				if not activeSession then
+				if not DCSession.active then
 					DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ No active session ~")
 					return
 				end
 
 				local player = UnitName("target")
 				local loot = string.match(msg, "^add +(.+|r)")
-				addLoot(player, loot);
+				DC_Roll:addLoot(player, loot);
 				
 			elseif msg_split[1] == "del" then
-				if not activeSession then
+				if not DCSession.active then
 					DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ No active session ~")
 					return
 				end
@@ -301,44 +317,44 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				local loot = string.match(msg, "^roll (.+)")
 				local lootName = string.match(loot, "%[(.+)%]")
 
-				currentlyRolledLoot = loot
+				DC_Roll.currentlyRolledLoot = loot
 
 				local announceString = "Roll " .. loot
-				if activeSession then
-					local lootPrios = getPrios(lootName)
+				if DCSession.active then
+					local lootPrios = DC_Roll:getPrios(lootName)
 					
-					if (lootPrios) then
-						if(lootPrios["nameCount"] > 1) then
+					if lootPrios then
+						if lootPrios["nameCount"] > 1 then
 							announceString = strjoin(" ", announceString, lootPrios["namesString"])
 						else
-							announceString = "GZ " .. currentlyRolledLoot .. " " .. lootPrios["namesString"] .. " softres"
+							announceString = "GZ " .. DC_Roll.currentlyRolledLoot .. " " .. lootPrios["namesString"] .. " softres"
 						end
 					end
 				end
 				SendChatMessage(announceString, "RAID_WARNING")
 				print("Roll started for "..loot)
-				trackRolls = true;
-				rolls = {}
+				DC_Roll.trackRolls = true;
+				DC_Roll.rolls = {}
 			elseif msg_split[1] == "endroll" then
-				trackRolls = false;
+				DC_Roll.trackRolls = false;
 				SendChatMessage("Rolls are now closed", "RAID");
 				DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ Roll Results ~")
 				
-				for p,r in spairs(rolls, function(t,a,b) return t[a] > t[b] end) do
+				for p,r in spairs(DC_Roll.rolls, function(t,a,b) return t[a] > t[b] end) do
 					DEFAULT_CHAT_FRAME:AddMessage(p.." : "..r)
 				end
 			elseif msg_split[1] == "export" then
 				local index = #DCSession
-				if (#msg_split > 1) then
+				if #msg_split > 1 then
 					local nr = tonumber(msg_split[2])
-					if (nr < #DCSession and nr > 0) then
+					if nr < #DCSession and nr > 0 then
 						index = nr
-					elseif (nr < 0 and index + nr > 0) then
+					elseif nr < 0 and index + nr > 0 then
 						index = index + nr
 					end
 				end
 				
-				DumpSession(index)
+				DC_Roll:DumpSession(index)
 			elseif msg_split[1] == "import" then
 				ImportFrame.ScrollText:SetText("")
 				ImportFrame:Show()
@@ -346,17 +362,17 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 		end
 	elseif event == "CHAT_MSG_SYSTEM" then
 		local name, roll, range = string.match(arg1, "^([^ ]+) rolls (%d+) %((%d+-%d+)%)$")
-		if roll ~= nil and trackRolls and range == "1-100" then
-			if rolls[name] == nil then
-				rolls[name] = roll - (receivedLoot(name)*100)
+		if roll ~= nil and DC_Roll.trackRolls and range == "1-100" then
+			if DC_Roll.rolls[name] == nil then
+				DC_Roll.rolls[name] = roll - (DC_Roll:receivedLoot(name)*100)
 			end
 		end
-	elseif event == "CHAT_MSG_LOOT" and activeSession then
+	elseif event == "CHAT_MSG_LOOT" and DCSession.active then
 		local player = select(4,...)
 		local item = string.match(arg1, "loot: (.+[^.])")
 		local itemName = string.match(item, "%[(.+)%]")
 		
-		if item == currentlyRolledLoot and getPrios(itemName) == nil then
+		if item == DC_Roll.currentlyRolledLoot and DC_Roll:getPrios(itemName) == nil then
 
 			local dialog = StaticPopup_Show("BIG_ADD_LOOT", item);
 			if dialog then
@@ -364,6 +380,12 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 				dialog.data2 = item
 			end
 		end
-		
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		local isInitialLogin = arg1
+		local isReloadingUi = ...
+
+		if DCSession.active and isInitialLogin or  isReloadingUi then
+			StaticPopup_Show("BIG_ACTIVE_SESSION");
+		end
 	end
 end)
