@@ -369,7 +369,7 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 		end
 	elseif event == "CHAT_MSG_LOOT" and DCSession.active then
 		local player = select(4,...)
-		local item = string.match(arg1, "loot: (.+[^.])")
+		local item = string.match(arg1, "loot: (.+[^.])") or string.match(arg1, "item: (.+[^.])")
 		local itemName = string.match(item, "%[(.+)%]")
 		
 		if item == DC_Roll.currentlyRolledLoot and DC_Roll:getPrios(itemName) == nil then
