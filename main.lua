@@ -246,7 +246,7 @@ StaticPopupDialogs["BIG_ACTIVE_SESSION"] = {
 	end,
 	OnCancel = function()
 		DCSession.active = false
-	end
+	end,
 	timeout = 0,
 	whileDead = true,
 	preferredIndex = 3,
@@ -384,7 +384,7 @@ f:SetScript("OnEvent", function (self, event, arg1, ...)
 		local isInitialLogin = arg1
 		local isReloadingUi = ...
 
-		if DCSession.active and isInitialLogin or  isReloadingUi then
+		if DCSession.active and (isInitialLogin or isReloadingUi) then
 			StaticPopup_Show("BIG_ACTIVE_SESSION");
 		end
 	end
