@@ -49,36 +49,22 @@ function DC_Roll:createDumpBox()
 	return CopyFrame
 end
 
-function DC_Roll:parseCSV(csvData)
-	for row in string.gmatch(csvData, "[^\n]+") do
+function DC_Roll:parseTSV(tsvData)
+	for row in string.gmatch(tsvData, "[^\n]+") do
 		local columnNr = 0
 
 		local loot = ""
 		local prios = {}
-		local isGroup = false
-		local group = ""
 
-		for column in string.gmatch(row, "[^,]+") do
-			if column:sub(1,1) == "\"" then
-				isGroup = true
-			end
+		-- WoW translates a tab to 4 spaces, replace that with | for easy split
+		local fixedRow = string.gsub(row, "    ", "|");
 
-			if isGroup then
-				group = group .. "," .. column
-				
-				if column:sub(#column, #column) == "\"" then
-					isGroup = false
-					column = strtrim(group, "\" ")
-				end
-			end
-
-			if not isGroup then
-				columnNr = columnNr + 1
-				if columnNr == 1 then
-					loot = column
-				elseif columnNr > 3 and prios[#prios] ~= column then
-					table.insert(prios, column)
-				end
+		for column in string.gmatch(fixedRow, "[^|]+") do
+			columnNr = columnNr + 1
+			if columnNr == 1 then
+				loot = column
+			elseif columnNr > 3 and prios[#prios] ~= column then
+				table.insert(prios, column)
 			end
 		end
 
@@ -128,7 +114,7 @@ function DC_Roll:createImportBox()
 		ImportFrame:Hide()
 	end)
 	ImportFrameButton:SetScript("OnClick", function(self)
-		DC_Roll:parseCSV(ImportFrameScrollText:GetText())
+		DC_Roll:parseTSV(ImportFrameScrollText:GetText())
 		ImportFrame:Hide()
 	end)
 
