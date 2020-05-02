@@ -4,4 +4,7 @@
 ## Version: 0.1
 ## SavedVariables: DCSession
 
+gui.lua
+popups.lua
+helper.lua
 main.lua
