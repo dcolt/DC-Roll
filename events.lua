@@ -88,7 +88,7 @@ function f:ADDON_LOADED(addonName)
 				SendChatMessage("Rolls are now closed", "RAID");
 				DEFAULT_CHAT_FRAME:AddMessage("|cFF00A59CBiG:|r ~ Roll Results ~")
 				
-				for p,r in spairs(DC_Roll.rolls, function(t,a,b) return t[a] > t[b] end) do
+				for p,r in DC_Roll:spairs(DC_Roll.rolls, function(t,a,b) return t[a] > t[b] end) do
 					DEFAULT_CHAT_FRAME:AddMessage(p.." : "..r)
 				end
 			elseif msg_split[1] == "export" then

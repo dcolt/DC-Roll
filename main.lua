@@ -25,7 +25,7 @@ function DC_Roll:receivedLoot(playerName)
 	return lootReceived
 end
 
-local function spairs(t, order)
+function DC_Roll:spairs(t, order)
     -- collect the keys
     local keys = {}
     for k in pairs(t) do keys[#keys+1] = k end
